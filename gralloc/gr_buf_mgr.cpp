@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2019 The Linux Foundation. All rights reserved.
  * Not a Contribution
  *
  * Copyright (C) 2010 The Android Open Source Project
@@ -43,7 +43,7 @@ BufferManager::BufferManager() : next_id_(0) {
   char property[PROPERTY_VALUE_MAX];
 
   // Map framebuffer memory
-  if ((property_get("debug.gralloc.map_fb_memory", property, NULL) > 0) &&
+  if ((property_get(MAP_FB_MEMORY_PROP, property, NULL) > 0) &&
       (!strncmp(property, "1", PROPERTY_VALUE_MAX) ||
        (!strncasecmp(property, "true", PROPERTY_VALUE_MAX)))) {
     map_fb_mem_ = true;
@@ -227,6 +227,10 @@ void BufferManager::RegisterHandleLocked(const private_handle_t *hnd,
 }
 
 gralloc1_error_t BufferManager::ImportHandleLocked(private_handle_t *hnd) {
+  if (private_handle_t::validate(hnd) != 0) {
+    ALOGE("ImportHandleLocked: Invalid handle: %p", hnd);
+    return GRALLOC1_ERROR_BAD_HANDLE;
+  }
   ALOGD_IF(DEBUG, "Importing handle:%p id: %" PRIu64, hnd, hnd->id);
   int ion_handle = allocator_->ImportBuffer(hnd->fd);
   if (ion_handle < 0) {
@@ -469,6 +473,12 @@ int BufferManager::AllocateBuffer(const BufferDescriptor &descriptor, buffer_han
   gralloc1_consumer_usage_t cons_usage = descriptor.GetConsumerUsage();
   uint32_t layer_count = descriptor.GetLayerCount();
 
+  // Check if GPU supports requested hardware buffer usage
+  if (!IsGPUSupportedHwBuffer(prod_usage)) {
+    ALOGE("AllocateBuffer - Requested HW Buffer usage not supported by GPU");
+    return GRALLOC1_ERROR_UNSUPPORTED;
+  }
+
   // Get implementation defined format
   int gralloc_format = allocator_->GetImplDefinedFormat(prod_usage, cons_usage, format);
 
@@ -676,7 +686,6 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
       }
 
       *color_space = 0;
-#ifdef USE_COLOR_METADATA
       ColorMetaData color_metadata;
       if (getMetaData(hnd, GET_COLOR_METADATA, &color_metadata) == 0) {
         switch (color_metadata.colorPrimaries) {
@@ -684,6 +693,7 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
             *color_space = HAL_CSC_ITU_R_709;
             break;
           case ColorPrimaries_BT601_6_525:
+          case ColorPrimaries_BT601_6_625:
             *color_space = ((color_metadata.range) ? HAL_CSC_ITU_R_601_FR : HAL_CSC_ITU_R_601);
             break;
           case ColorPrimaries_BT2020:
@@ -697,11 +707,6 @@ gralloc1_error_t BufferManager::Perform(int operation, va_list args) {
       } else if (getMetaData(hnd, GET_COLOR_SPACE, color_space) != 0) {
           *color_space = 0;
       }
-#else
-      if (getMetaData(hnd, GET_COLOR_SPACE, color_space) != 0) {
-          *color_space = 0;
-      }
-#endif
     } break;
     case GRALLOC_MODULE_PERFORM_GET_YUV_PLANE_INFO: {
       private_handle_t *hnd = va_arg(args, private_handle_t *);
@@ -854,6 +859,9 @@ static bool IsYuvFormat(const private_handle_t *hnd) {
     case HAL_PIXEL_FORMAT_RAW10:
     case HAL_PIXEL_FORMAT_YV12:
     case HAL_PIXEL_FORMAT_Y8:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010:
+    case HAL_PIXEL_FORMAT_YCbCr_420_TP10_UBWC:
+    case HAL_PIXEL_FORMAT_YCbCr_420_P010_UBWC:
       return true;
     default:
       return false;

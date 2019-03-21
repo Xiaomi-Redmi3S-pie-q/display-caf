@@ -30,7 +30,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <cutils/log.h>
+#include <log/log.h>
 #include <cinttypes>
 #include <gralloc_priv.h>
 #include "qdMetaData.h"
@@ -120,29 +120,9 @@ int setMetaDataVa(MetaData_t *data, DispParamType paramType,
         case SET_VT_TIMESTAMP:
             data->vtTimeStamp = *((uint64_t *)param);
             break;
-        case COLOR_METADATA: {
-#ifdef USE_COLOR_METADATA
+        case COLOR_METADATA:
             data->color = *((ColorMetaData *)param);
-#else
-            ColorMetaData *color = (ColorMetaData *)param;
-            switch (color->colorPrimaries) {
-                case ColorPrimaries_BT709_5:
-                    data->colorSpace = ITU_R_709;
-                    break;
-                case ColorPrimaries_BT601_6_525:
-                case ColorPrimaries_BT601_6_625:
-                    data->colorSpace = ((color->range) ? ITU_R_601_FR : ITU_R_601);
-                    break;
-                case ColorPrimaries_BT2020:
-                    data->colorSpace = ((color->range) ? ITU_R_2020_FR : ITU_R_2020);
-                    break;
-                default:
-                    data->colorSpace = ITU_R_601;
-                    break;
-            }
-#endif
             break;
-        }
         default:
             ALOGE("Unknown paramType %d", paramType);
             break;
@@ -258,12 +238,10 @@ int getMetaDataVa(MetaData_t *data, DispFetchParamType paramType,
             }
             break;
         case GET_COLOR_METADATA:
-#ifdef USE_COLOR_METADATA
             if (data->operation & COLOR_METADATA) {
                 *((ColorMetaData *)param) = data->color;
                 ret = 0;
             }
-#endif
             break;
         default:
             ALOGE("Unknown paramType %d", paramType);

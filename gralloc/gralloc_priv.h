@@ -23,6 +23,13 @@
 #include <unistd.h>
 #include "gr_priv_handle.h"
 
+#define GRALLOC_PROP_PREFIX  "vendor.gralloc."
+#define GRALLOC_PROP(prop_name) GRALLOC_PROP_PREFIX prop_name
+
+#define DISABLE_UBWC_PROP                    GRALLOC_PROP("disable_ubwc")
+#define ENABLE_FB_UBWC_PROP                  GRALLOC_PROP("enable_fb_ubwc")
+#define MAP_FB_MEMORY_PROP                   GRALLOC_PROP("map_fb_memory")
+
 #define ROUND_UP_PAGESIZE(x) roundUpToPageSize(x)
 inline int roundUpToPageSize(int x) {
     return (x + (getpagesize()-1)) & ~(getpagesize()-1);
@@ -58,10 +65,10 @@ inline int roundUpToPageSize(int x) {
 /* Consumer flags */
 /* TODO(user): Fix when producer and consumer flags are actually separated */
 /* This flag is set for WFD usecase */
-#define GRALLOC1_CONSUMER_USAGE_PRIVATE_WFD            0x00200000
+#define GRALLOC1_CONSUMER_USAGE_PRIVATE_WFD            (UINT32_C(1) << 21)
 
 /* This flag is used for SECURE display usecase */
-#define GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY 0x02000000
+#define GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY (UINT32_C(1) << 31)
 
 /* Buffer content should be displayed on a primary display only */
 #define GRALLOC1_CONSUMER_USAGE_PRIVATE_INTERNAL_ONLY  0x04000000
@@ -80,7 +87,14 @@ inline int roundUpToPageSize(int x) {
 #define GRALLOC_USAGE_PRIVATE_SECURE_DISPLAY GRALLOC1_CONSUMER_USAGE_PRIVATE_SECURE_DISPLAY
 #define GRALLOC_USAGE_PRIVATE_MM_HEAP 0x0
 
-
+/* HARDWAREBUFFER flags used by GPU to check secure  secure context support */
+#define GRALLOC1_PRODUCER_USAGE_GPU_SAMPLED_IMAGE                   1UL << 8
+/* The buffer will be used as a shader storage or uniform buffer object. */
+#define GRALLOC1_PRODUCER_USAGE_GPU_DATA_BUFFER                     1UL << 24
+/* The buffer will be used as a cube map texture. */
+#define GRALLOC1_PRODUCER_USAGE_GPU_CUBE_MAP                        1UL << 25
+/* The buffer contains a complete mipmap hierarchy. */
+#define GRALLOC1_PRODUCER_USAGE_GPU_MIPMAP_COMPLETE                 1UL << 26
 
 // for PERFORM API :
 #define GRALLOC_MODULE_PERFORM_CREATE_HANDLE_FROM_BUFFER 1

@@ -124,10 +124,8 @@ struct MetaData_t {
 
     /* Set by camera to program the VT Timestamp */
     uint64_t vtTimeStamp;
-#ifdef USE_COLOR_METADATA
     /* Color Aspects + HDR info */
     ColorMetaData color;
-#endif
     /* Consumer should read this data as follows based on
      * Gralloc flag "interlaced" listed above.
      * [0] : If it is progressive.
